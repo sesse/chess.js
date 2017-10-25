@@ -464,7 +464,7 @@ var Chess = function(fen) {
     return piece;
   }
 
-  function build_move(board, from, to, flags, promotion) {
+  function build_move(board, from, to, flags, promotion, rook_sq) {
     var move = {
       color: turn,
       from: from,
@@ -478,7 +478,10 @@ var Chess = function(fen) {
       move.promotion = promotion;
     }
 
-    if (board[to]) {
+    if(flags & (BITS.KSIDE_CASTLE | BITS.QSIDE_CASTLE)) {
+        move.rook_sq = rook_sq;   // remember the position of the rook
+    }
+    else if (board[to]) {
       move.captured = board[to].type;
     } else if (flags & BITS.EP_CAPTURE) {
         move.captured = PAWN;
@@ -487,7 +490,7 @@ var Chess = function(fen) {
   }
 
   function generate_moves(options) {
-    function add_move(board, moves, from, to, flags) {
+    function add_move(board, moves, from, to, flags, rook_sq) {
       /* if pawn promotion */
       if (board[from].type === PAWN &&
          (rank(to) === RANK_8 || rank(to) === RANK_1)) {
@@ -496,8 +499,46 @@ var Chess = function(fen) {
             moves.push(build_move(board, from, to, flags, pieces[i]));
           }
       } else {
-       moves.push(build_move(board, from, to, flags));
+       moves.push(build_move(board, from, to, flags, null, rook_sq));
       }
+    }
+
+    function checkCastle(board, from, to, them, isKingside) {
+      if(from === to)   // huh?
+        return false;
+      var delta = isKingside ? to - from : from - to;
+      var i;
+      for (i = 1; i <= delta; i++) {
+        var piece = isKingside ? board[from + i] : board[from - i];
+        if (typeof piece !== 'undefined' && piece !== null && piece.type !== ROOK)
+            return false
+      }
+      for (i = 0; i <= delta; i++) {
+        if (attacked(them, isKingside ? from + i : from - i))
+            return false
+      }
+      return true
+    }
+
+    function searchRook(board, from, direction) {
+      var i, piece;
+      if (direction) {
+        for (i=from; i>=SQUARES.a8; i--) {
+          piece = board[i];
+          if (typeof piece !== 'undefined' && piece !== null && piece.type === ROOK) {
+            return i;
+          }
+        }
+      }
+      else {
+        for (i=from; i<=SQUARES.h1; i++) {
+          piece = board[i];
+          if (typeof piece !== 'undefined' && piece !== null && piece.type === ROOK) {
+              return i;
+          }
+        }
+      }
+      return null;
     }
 
     var moves = [];
@@ -589,31 +630,22 @@ var Chess = function(fen) {
       /* king-side castling */
       if (castling[us] & BITS.KSIDE_CASTLE) {
         var castling_from = kings[us];
-        var castling_to = castling_from + 2;
+        var castling_to = us===WHITE ? SQUARES.g1 : SQUARES.g8;
 
-        if (board[castling_from + 1] == null &&
-            board[castling_to]       == null &&
-            !attacked(them, kings[us]) &&
-            !attacked(them, castling_from + 1) &&
-            !attacked(them, castling_to)) {
-          add_move(board, moves, kings[us] , castling_to,
-                   BITS.KSIDE_CASTLE);
+        if (checkCastle(board, castling_from, castling_to, them, true)) {
+          add_move(board, moves, castling_from , castling_to,
+                   BITS.KSIDE_CASTLE, searchRook(board, castling_from, false));
         }
       }
 
       /* queen-side castling */
       if (castling[us] & BITS.QSIDE_CASTLE) {
         var castling_from = kings[us];
-        var castling_to = castling_from - 2;
+        var castling_to = us===WHITE ? SQUARES.c1 : SQUARES.c8;
 
-        if (board[castling_from - 1] == null &&
-            board[castling_from - 2] == null &&
-            board[castling_from - 3] == null &&
-            !attacked(them, kings[us]) &&
-            !attacked(them, castling_from - 1) &&
-            !attacked(them, castling_to)) {
-          add_move(board, moves, kings[us], castling_to,
-                   BITS.QSIDE_CASTLE);
+        if (checkCastle(board, castling_from, castling_to, them, false)) {
+          add_move(board, moves, castling_from, castling_to,
+                   BITS.QSIDE_CASTLE, searchRook(board, castling_from, true));
         }
       }
     }
@@ -844,6 +876,7 @@ var Chess = function(fen) {
   function make_move(move) {
     var us = turn;
     var them = swap_color(us);
+    var old_to = board[move.to];
     push(move);
 
     board[move.to] = board[move.from];
@@ -870,14 +903,16 @@ var Chess = function(fen) {
       /* if we castled, move the rook next to the king */
       if (move.flags & BITS.KSIDE_CASTLE) {
         var castling_to = move.to - 1;
-        var castling_from = move.to + 1;
-        board[castling_to] = board[castling_from];
-        board[castling_from] = null;
+        var castling_from = move.rook_sq;
+        board[castling_to] = old_to===null ? board[castling_from] : old_to;
+        if(castling_from !== move.to)
+          board[castling_from] = null;
       } else if (move.flags & BITS.QSIDE_CASTLE) {
         var castling_to = move.to + 1;
-        var castling_from = move.to - 2;
-        board[castling_to] = board[castling_from];
-        board[castling_from] = null;
+        var castling_from = move.rook_sq;
+        board[castling_to] = old_to===null ? board[castling_from] : old_to;
+        if(castling_from !== move.to)
+          board[castling_from] = null;
       }
 
       /* turn off castling */
@@ -947,6 +982,8 @@ var Chess = function(fen) {
     var us = turn;
     var them = swap_color(turn);
 
+    var old_from = board[move.from];
+
     board[move.from] = board[move.to];
     board[move.from].type = move.piece;  // to undo any promotions
     board[move.to] = null;
@@ -967,15 +1004,16 @@ var Chess = function(fen) {
     if (move.flags & (BITS.KSIDE_CASTLE | BITS.QSIDE_CASTLE)) {
       var castling_to, castling_from;
       if (move.flags & BITS.KSIDE_CASTLE) {
-        castling_to = move.to + 1;
+        castling_to = move.rook_sq;
         castling_from = move.to - 1;
       } else if (move.flags & BITS.QSIDE_CASTLE) {
-        castling_to = move.to - 2;
+        castling_to = move.rook_sq;
         castling_from = move.to + 1;
       }
 
-      board[castling_to] = board[castling_from];
-      board[castling_from] = null;
+      board[castling_to] = old_from===null ? board[castling_from] : old_from;
+      if(castling_from !== move.from)
+        board[castling_from] = null;
     }
 
     return move;
