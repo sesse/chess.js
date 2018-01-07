@@ -920,25 +920,23 @@ var Chess = function(fen) {
     }
 
     /* turn off castling if we move a rook */
-    if (castling[us]) {
-      for (var i = 0, len = ROOKS[us].length; i < len; i++) {
-        if (move.from === ROOKS[us][i].square &&
-            castling[us] & ROOKS[us][i].flag) {
-          castling[us] ^= ROOKS[us][i].flag;
-          break;
-        }
+    if (castling[us] && board[move.to].type === ROOK) {
+      if (turn === WHITE) {
+        castling[WHITE] &= move.from < kings[WHITE] ? ~BITS.QSIDE_CASTLE : ~BITS.KSIDE_CASTLE;
+      }
+      else {
+        castling[BLACK] &= move.from < kings[BLACK] ? ~BITS.KSIDE_CASTLE : ~BITS.QSIDE_CASTLE;
       }
     }
 
     /* turn off castling if we capture a rook */
-    if (castling[them]) {
-      for (var i = 0, len = ROOKS[them].length; i < len; i++) {
-        if (move.to === ROOKS[them][i].square &&
-            castling[them] & ROOKS[them][i].flag) {
-          castling[them] ^= ROOKS[them][i].flag;
-          break;
+    if (castling[them] && move.captured === ROOK) {
+        if (turn === BLACK) {
+            castling[WHITE] &= move.to < kings[WHITE] ? ~BITS.QSIDE_CASTLE : ~BITS.KSIDE_CASTLE;
         }
-      }
+        else {
+            castling[BLACK] &= move.to < kings[BLACK] ? ~BITS.KSIDE_CASTLE : ~BITS.QSIDE_CASTLE;
+        }
     }
 
     /* if big pawn move, update the en passant square */
