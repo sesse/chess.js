@@ -1115,6 +1115,12 @@ describe("History", function() {
       moves: ['g4', 'c5', 'Rg3', 'O-O-O', 'a4', 'g6', 'Nb3', 'Nb6', 'Nd4', 'Na8',
               'Ra3', 'Nb6', 'Ra1', 'Na8', 'O-O-O', 'Nb6'],
       fen: '1bkrbqrn/pp1ppp1p/1n4p1/2p5/P2N2P1/8/1PPPPP1P/RBKRBQ1N w - - 10 9'},
+
+     // Chess960 regression test for black castling.
+     {verbose: false,
+      start: 'bbrqk1r1/p2ppppp/4n1n1/1pp5/4P3/2P1N1N1/PP1P1PPP/BBRQ1RK1 b k - 4 5',
+      moves: ['O-O'],
+      fen: 'bbrq1rk1/p2ppppp/4n1n1/1pp5/4P3/2P1N1N1/PP1P1PPP/BBRQ1RK1 w - - 5 6'},
   ];
 
   tests.forEach(function(t, i) {
