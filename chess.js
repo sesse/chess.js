@@ -968,11 +968,12 @@ var Chess = function(fen) {
   function make_move(move) {
     var us = turn;
     var them = swap_color(us);
-    var old_to = board[move.to];
     push(move);
 
     board[move.to] = board[move.from];
-    board[move.from] = null;
+    if (move.from != move.to) {
+      board[move.from] = null;
+    }
 
     /* if ep capture, remove the captured pawn */
     if (move.flags & BITS.EP_CAPTURE) {
@@ -996,14 +997,14 @@ var Chess = function(fen) {
       if (move.flags & BITS.KSIDE_CASTLE) {
         var castling_to = move.to - 1;
         var castling_from = move.rook_sq;
-        board[castling_to] = old_to===null ? board[castling_from] : old_to;
-        if(castling_from !== move.to)
+        board[castling_to] = {type: ROOK, color: us};
+        if(castling_from !== move.to && castling_from !== castling_to)
           board[castling_from] = null;
       } else if (move.flags & BITS.QSIDE_CASTLE) {
         var castling_to = move.to + 1;
         var castling_from = move.rook_sq;
-        board[castling_to] = old_to===null ? board[castling_from] : old_to;
-        if(castling_from !== move.to)
+        board[castling_to] = {type: ROOK, color: us};
+        if(castling_from !== move.to && castling_from !== castling_to)
           board[castling_from] = null;
       }
 
@@ -1074,11 +1075,11 @@ var Chess = function(fen) {
     var us = turn;
     var them = swap_color(turn);
 
-    var old_from = board[move.from];
-
-    board[move.from] = board[move.to];
-    board[move.from].type = move.piece;  // to undo any promotions
-    board[move.to] = null;
+    if (move.from != move.to) {
+      board[move.from] = board[move.to];
+      board[move.from].type = move.piece;  // to undo any promotions
+      board[move.to] = null;
+    }
 
     if (move.flags & BITS.CAPTURE) {
       board[move.to] = {type: move.captured, color: them};
@@ -1103,8 +1104,8 @@ var Chess = function(fen) {
         castling_from = move.to + 1;
       }
 
-      board[castling_to] = old_from===null ? board[castling_from] : old_from;
-      if(castling_from !== move.from)
+      board[castling_to] = {type: ROOK, color: us};
+      if(castling_from !== move.from && castling_from !== castling_to)
         board[castling_from] = null;
     }
 
