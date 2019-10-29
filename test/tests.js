@@ -1341,4 +1341,10 @@ describe('Regression Tests', function() {
     assert.deepEqual(chess.header(), expected);
   })
 
+  it('Chess960 castling rights should be preserved', function() {
+    var chess = new Chess("nrbbkrqn/pppppppp/8/8/8/8/PPPPPPPP/NRBBKRQN w FBfb - 0 1");
+    var result = chess.fen();
+    assert(result);
+    assert(chess.fen() === "nrbbkrqn/pppppppp/8/8/8/8/PPPPPPPP/NRBBKRQN w KQkq - 0 1");
+  });
 });
