@@ -455,7 +455,7 @@ describe("PGN", function() {
 
   positions.forEach(function(position, i) {
 
-    it(i, function() {
+    it("" + i, function() {
       var chess = ("starting_position" in position) ? new Chess(position.starting_position) : new Chess();
       passed = true;
       error_message = "";
@@ -1124,7 +1124,7 @@ describe("History", function() {
   ];
 
   tests.forEach(function(t, i) {
-    it(i, function() {
+    it("" + i, function() {
       if (t.start) {
         chess.load(t.start);
       } else {
